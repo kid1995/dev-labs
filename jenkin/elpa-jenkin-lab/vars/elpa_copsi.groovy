@@ -66,12 +66,20 @@ boolean autoDeployFeatBranch(String serviceName, String imageName, String target
 	}
 }
 
-boolean deployFeature(String serviceName, List<String> helmOverrides) {
+boolean deployFeature(String serviceName, String schemaPrefix, List<String> helmOverrides) {
 	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
-	def manifest = generateTemplate(['--values values-feature.yaml'] + helmOverrides)
+	def branchName = branchNameWithoutPrefix()
+	def stageName = "feat-${branchName}".toLowerCase()
+	def schemaName = si_psql.normalizeSchemaName("${schemaPrefix}${si_git.branchName()}")
 	def dir = "./services/${serviceName}/features"
 
-	return deployManifest(serviceName, jiraTicket, "feature", manifest, "${dir}/${jiraTicket}.yaml") {
+	def manifest = generateTemplate([
+		'--values values-feature.yaml',
+		"--set stage=${stageName}",
+		"--set postgres.schema=${schemaName}",
+	] + helmOverrides)
+
+	return deployManifest(serviceName, jiraTicket, "feature", manifest, "${dir}/${stageName}.yaml") {
 		rebuildKustomization(dir)
 		sh "git add ${dir}/"
 	}
@@ -303,7 +311,7 @@ private String generateTemplate(List<String> args) {
 		echo "Executing: ${helmCommand}"
 		return sh(script: helmCommand, returnStdout: true).trim()
 	} else {
-		def helmImage = env.HELM_IMAGE ?: 'alpine/helm:3'
+		def helmImage = env.HELM_IMAGE ?: 'registry:5000/toolimages-alpine-helm-kustomize:3'
 		echo "Local helm not found — using si_docker.withContainer(${helmImage})"
 		def result = ""
 		si_docker.withContainer(SERVICE_GROUP ?: "elpa", helmImage) { runCmd ->

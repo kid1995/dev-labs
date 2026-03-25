@@ -45,6 +45,13 @@ services:
     volumes:
       - jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+      # [LAB] Jenkins shared libraries mounted as local filesystem libs
+      # si-jenkin-lab = lab-adapted si-dp-shared-libs (si_git, si_copsi, si_docker, etc.)
+      # elpa-jenkin-lab = lab-adapted elpa-shared-lib (elpa_copsi, elpa_psql)
+      - ./jenkin/si-jenkin-lab:/var/jenkins_home/shared-libs/si-jenkin-lab:ro
+      - ./jenkin/elpa-jenkin-lab:/var/jenkins_home/shared-libs/elpa-jenkin-lab:ro
+      # Jenkins init script to register shared libraries on startup
+      - ./config/jenkins/init-shared-libs.groovy:/var/jenkins_home/init.groovy.d/init-shared-libs.groovy:ro
     networks:
       - lab-net
     healthcheck:

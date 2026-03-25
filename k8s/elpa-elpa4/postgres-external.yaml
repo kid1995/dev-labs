@@ -1,0 +1,94 @@
+# Postgres "external" to K8s — simulates corporate managed PostgreSQL
+#
+# Production: vipsiae11t.system-a.local:5432 (TST), vipsiae11p.system-a.local:5432 (PRD)
+# Lab:        PostgreSQL runs in Docker Compose (lab-postgres on lab-net)
+#
+# We expose it inside K8s via:
+#   1. A headless Service (no selector) with a manual Endpoints pointing to the Docker host
+#   2. DNS aliases so corporate hostnames resolve inside the cluster
+#
+# The kind node is connected to lab-net, so pods can reach lab-postgres.
+---
+# Get the lab-postgres IP from Docker network
+# This is set by the setup script — see scripts/setup-k8s-infra.sh
+# Default: uses the Docker gateway as a fallback
+
+# Service without selector = manual endpoint
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: elpa-elpa4
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+  clusterIP: None
+---
+# Manual Endpoints — points to lab-postgres container IP on lab-net
+# Updated by setup script. Placeholder uses Docker bridge gateway.
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: postgres
+  namespace: elpa-elpa4
+subsets:
+  - addresses:
+      - ip: "POSTGRES_IP_PLACEHOLDER"
+    ports:
+      - port: 5432
+---
+# DNS alias: vipsiae11t.system-a.local → postgres service (TST)
+# So Helm values with corporate hostnames resolve without changes
+apiVersion: v1
+kind: Service
+metadata:
+  name: vipsiae11t
+  namespace: elpa-elpa4
+spec:
+  type: ExternalName
+  externalName: postgres.elpa-elpa4.svc.cluster.local
+---
+# DNS alias: vipsiae11p.system-a.local → postgres service (PRD)
+apiVersion: v1
+kind: Service
+metadata:
+  name: vipsiae11p
+  namespace: elpa-elpa4
+spec:
+  type: ExternalName
+  externalName: postgres.elpa-elpa4.svc.cluster.local
+---
+# Secret for TST postgres credentials (matches copsi values-tst.yaml postgres.secret)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tst-postgres-user
+  namespace: elpa-elpa4
+type: Opaque
+stringData:
+  USER: db_user
+  PASSWORD: db_password
+---
+# Secret for ABN
+apiVersion: v1
+kind: Secret
+metadata:
+  name: abn-postgresuser-secret
+  namespace: elpa-elpa4
+type: Opaque
+stringData:
+  USER: db_user
+  PASSWORD: db_password
+---
+# Secret for lab values
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lab-postgres-secret
+  namespace: elpa-elpa4
+type: Opaque
+stringData:
+  USER: db_user
+  PASSWORD: db_password

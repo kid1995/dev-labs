@@ -36,7 +36,11 @@ String shortCommitId() {
 }
 
 String branchName() {
-    return env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'develop'
+    if (env.BRANCH_NAME) return env.BRANCH_NAME
+    if (env.GIT_BRANCH) return env.GIT_BRANCH.replaceFirst('origin/', '')
+    // Fallback: detect from git (non-multibranch pipelines don't set BRANCH_NAME)
+    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached', returnStdout: true).trim()
+    return branch == 'HEAD' || branch == 'detached' ? 'develop' : branch
 }
 
 String featureName() {

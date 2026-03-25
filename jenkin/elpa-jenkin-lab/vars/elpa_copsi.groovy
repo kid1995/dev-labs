@@ -67,83 +67,182 @@ boolean autoDeployFeatBranch(String serviceName, String imageName, String target
 }
 
 boolean deployFeature(String serviceName, List<String> helmOverrides) {
-	def stage = CopsiEnvironment.nop
-	def branchName = si_git.branchName()
 	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
+	def manifest = generateTemplate(['--values values-feature.yaml'] + helmOverrides)
+	def dir = "./services/${serviceName}/features"
 
-	def helmArgs = [
-		'--values values-feature.yaml',
-	] + helmOverrides
+	return deployManifest(serviceName, jiraTicket, "feature", manifest, "${dir}/${jiraTicket}.yaml") {
+		rebuildKustomization(dir)
+		sh "git add ${dir}/"
+	}
+}
 
-	def manifest = generateTemplate(helmArgs)
+boolean deployTst(String serviceName, List<String> helmOverrides) {
+	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
+	def manifest = generateTemplate(['--values values-tst.yaml'] + helmOverrides)
 
-	def target = "./services/${serviceName}/features/${jiraTicket}.yaml"
+	return deployManifest(serviceName, jiraTicket, "tst", manifest, "./services/${serviceName}/tst.yaml")
+}
+
+boolean deployLabTst(String serviceName, String imageTag, List<String> helmOverrides) {
+	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
+	def manifest = generateTemplate(['--values values-lab-tst.yaml', "--set image.tag=${imageTag}"] + helmOverrides)
+
+	return deployManifest(serviceName, jiraTicket, "tst", manifest, "./services/${serviceName}/tst.yaml")
+}
+
+/**
+ * Deploys to ABN and cleans up obsolete feature deployments.
+ *
+ * When a feature branch merges into develop, the branch gets deleted.
+ * This function detects feature deployment files whose branch no longer exists
+ * in git remote, removes them, and deploys ABN — all in one PR so ArgoCD
+ * removes stale features and deploys ABN atomically.
+ */
+boolean deployAbn(String serviceName, List<String> helmOverrides) {
+	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
+	def manifest = generateTemplate(['--values values-abn.yaml'] + helmOverrides)
+	def featuresDir = "./services/${serviceName}/features"
+	def abnTarget = "./services/${serviceName}/abn.yaml"
+
+	def branchName = si_git.branchName()
+
 	Closure<String> autoDeployScript = {
-		sh "mkdir -p ./services/${serviceName}/features"
+		// 1. Write ABN manifest
+		sh "mkdir -p ${new File(abnTarget).parent}"
+		writeFile file: abnTarget, text: manifest
+		sh "git add ${abnTarget}"
+
+		// 2. Clean up obsolete feature deployments
+		cleanupObsoleteFeatures(serviceName, featuresDir)
+
+		return "${jiraTicket}: Deploy ${serviceName} abn + cleanup features"
+	}
+
+	return handlePR(serviceName, jiraTicket, branchName, CopsiEnvironment.nop, autoDeployScript)
+}
+
+/**
+ * Removes feature deployment files whose branch no longer exists in git remote.
+ *
+ * Compares feature YAML filenames (e.g., ELPA4-1234.yaml) against existing
+ * remote branches. If no branch contains that ticket, the file is obsolete.
+ *
+ * When all features are removed, the features/ directory and its kustomization.yaml
+ * are also removed to avoid an empty resources list that breaks kustomize.
+ */
+private void cleanupObsoleteFeatures(String serviceName, String featuresDir) {
+	if (!fileExists(featuresDir)) {
+		echo "No features directory — nothing to clean"
+		return
+	}
+
+	// Get remote branches from the CODE repo (not the deploy repo we're inside).
+	// WORKSPACE points to the Jenkins workspace where the code repo is checked out.
+	def remoteBranches = sh(
+		script: "git -C '${env.WORKSPACE}' ls-remote --heads origin 2>/dev/null || true",
+		returnStdout: true
+	).trim().split('\n').collect { it.replaceAll(/.*refs\/heads\//, '') }.findAll { it }
+
+	echo "Remote branches: ${remoteBranches.size()}"
+
+	// Get all feature deployment files
+	def featureFiles = sh(script: "ls ${featuresDir}/*.yaml 2>/dev/null || true", returnStdout: true)
+		.trim()
+		.split("\\s+")
+		.collect { new File(it).name }
+		.findAll { it && it != "kustomization.yaml" }
+
+	if (!featureFiles) {
+		echo "No feature deployments found"
+		return
+	}
+
+	// Check each feature file: does any remote branch still contain that ticket?
+	def obsolete = []
+	featureFiles.each { fileName ->
+		def ticket = fileName.replace('.yaml', '').toUpperCase()
+		def branchExists = remoteBranches.any { branch ->
+			branch.toUpperCase().contains(ticket)
+		}
+		if (!branchExists) {
+			obsolete << fileName
+			echo "Obsolete: ${fileName} (no branch with ${ticket})"
+		}
+	}
+
+	if (!obsolete) {
+		echo "All ${featureFiles.size()} feature deployments still have active branches"
+		return
+	}
+
+	// Remove obsolete files
+	obsolete.each { fileName ->
+		sh "rm -f ${featuresDir}/${fileName}"
+		echo "Removed: ${featuresDir}/${fileName}"
+	}
+	sh "git add ${featuresDir}/"
+
+	// Check if any features remain
+	def remaining = featureFiles - obsolete
+
+	if (remaining) {
+		rebuildKustomization(featuresDir)
+	} else {
+		// No features left — write an empty kustomization so the parent
+		// reference to features/ stays valid and kustomize build won't fail.
+		writeFile file: "${featuresDir}/kustomization.yaml", text: """\
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: []
+"""
+	}
+	sh "git add ${featuresDir}/"
+
+	echo "Cleanup: removed ${obsolete.size()} obsolete, ${remaining.size()} remaining"
+}
+
+/**
+ * Removes 'features' or 'features/' entry from parent kustomization.yaml resources list.
+ * Prevents kustomize build failure when features/ directory no longer exists.
+ */
+/**
+ * Writes a rendered manifest to the deploy repo and creates a merge PR.
+ * Optional afterWrite closure for extra steps (e.g., rebuilding kustomization.yaml).
+ */
+private boolean deployManifest(String serviceName, String jiraTicket, String env, String manifest, String target, Closure afterWrite = null) {
+	def branchName = si_git.branchName()
+
+	Closure<String> autoDeployScript = {
+		sh "mkdir -p ${new File(target).parent}"
 		writeFile file: target, text: manifest
 		sh "git add ${target}"
-		def files = sh(script: "ls ./services/${serviceName}/features/", returnStdout: true)
-			.trim()
-			.split("\\s+")
-			.findAll { it != "kustomization.yaml" }
-			.collect { "- ${it}" }
-			.join("\n")
-		writeFile file: "./services/${serviceName}/features/kustomization.yaml", text: """\
+		if (afterWrite) afterWrite()
+		return "${jiraTicket}: Deploy ${serviceName} ${env}"
+	}
+
+	return handlePR(serviceName, jiraTicket, branchName, CopsiEnvironment.nop, autoDeployScript)
+}
+
+/**
+ * Rebuilds kustomization.yaml from all YAML files in a directory.
+ */
+private void rebuildKustomization(String dir) {
+	def resources = sh(script: "ls ${dir}/*.yaml 2>/dev/null || true", returnStdout: true)
+		.trim()
+		.split("\\s+")
+		.collect { new File(it).name }
+		.findAll { it && it != "kustomization.yaml" }
+		.collect { "- ${it}" }
+		.join("\n")
+
+	writeFile file: "${dir}/kustomization.yaml", text: """\
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-${files}
+${resources}
 """
-		sh "git add ./services/${serviceName}/features/"
-		return "${jiraTicket}: Deploy ${serviceName} feature"
-	}
-
-	return handlePR(serviceName, jiraTicket, branchName, stage, autoDeployScript)
-}
-
-boolean deployTst(String serviceName, List<String> helmOverrides) {
-	def stage = CopsiEnvironment.nop
-	def branchName = si_git.branchName()
-	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
-
-	def helmArgs = [
-		'--values values-tst.yaml',
-	] + helmOverrides
-
-	def manifest = generateTemplate(helmArgs)
-
-	def target = "./services/${serviceName}/tst.yaml"
-	Closure<String> autoDeployScript = {
-		sh "mkdir -p ./services/${serviceName}"
-		writeFile file: target, text: manifest
-		sh "git add ${target}"
-		return "${jiraTicket}: Deploy ${serviceName} tst"
-	}
-
-	return handlePR(serviceName, jiraTicket, branchName, stage, autoDeployScript)
-}
-
-boolean deployAbn(String serviceName, List<String> helmOverrides) {
-	def stage = CopsiEnvironment.nop
-	def branchName = si_git.branchName()
-	def jiraTicket = si_git.extractJiraReferenceFromCommit("ELPA4")
-
-	def helmArgs = [
-		'--values values-abn.yaml',
-	] + helmOverrides
-
-	def manifest = generateTemplate(helmArgs)
-
-	def target = "./services/${serviceName}/abn.yaml"
-	Closure<String> autoDeployScript = {
-		sh "mkdir -p ./services/${serviceName}"
-		writeFile file: target, text: manifest
-		sh "git add ${target}"
-		return "${jiraTicket}: Deploy ${serviceName} abn"
-	}
-
-	return handlePR(serviceName, jiraTicket, branchName, stage, autoDeployScript)
 }
 
 /**
@@ -179,23 +278,40 @@ private boolean handlePR(String serviceName, String jiraTicket, String branchNam
 
 /**
  * Generates Helm template output.
- * Uses HELM_IMAGE env var for Docker-based helm (corporate),
- * falls back to local helm CLI (lab).
+ *
+ * Strategy:
+ *   1. If helm CLI is installed locally on Jenkins → use it directly
+ *   2. Otherwise → use si_docker.withContainer to run helm via Docker
+ *      (same pattern as corporate Jenkins, uses HELM_IMAGE or default alpine/helm:3)
+ *
+ * When running via Docker (withContainer), the workspace is copied into the container
+ * and helm runs from /workspace — values files are relative to copsi/ chart.
+ * When running locally, same layout — values files need copsi/ prefix.
  */
 private String generateTemplate(List<String> args) {
-	if (env.HELM_IMAGE) {
-		def dockerCommand = """
-			docker run --rm \
-				-v "${env.WORKSPACE}/copsi":/helm \
-				${env.HELM_IMAGE} \
-				template /helm ${args.join(' ')}
-		""".trim()
-		echo "Executing: ${dockerCommand}"
-		return sh(script: dockerCommand, returnStdout: true).trim()
-	} else {
-		def helmCommand = "helm template release-name ./copsi ${args.join(' ')}"
+	def helmAvailable = sh(script: 'command -v helm > /dev/null 2>&1', returnStatus: true) == 0
+
+	// Both paths need copsi/ prefix since helm runs from workspace root
+	def adjustedArgs = args.collect { arg ->
+		arg.startsWith('--values ') ? arg.replace('--values ', '--values copsi/') : arg
+	}
+	def helmCommand = "helm template release-name ./copsi ${adjustedArgs.join(' ')}"
+
+	if (helmAvailable) {
+		def helmVersion = sh(script: 'helm version --short', returnStdout: true).trim()
+		echo "Using local helm: ${helmVersion}"
 		echo "Executing: ${helmCommand}"
 		return sh(script: helmCommand, returnStdout: true).trim()
+	} else {
+		def helmImage = env.HELM_IMAGE ?: 'alpine/helm:3'
+		echo "Local helm not found — using si_docker.withContainer(${helmImage})"
+		def result = ""
+		si_docker.withContainer(SERVICE_GROUP ?: "elpa", helmImage) { runCmd ->
+			def version = runCmd('helm version --short')
+			echo "Using Docker helm: ${version}"
+			result = runCmd(helmCommand)
+		}
+		return result.trim()
 	}
 }
 

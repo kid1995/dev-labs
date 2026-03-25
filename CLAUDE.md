@@ -1,5 +1,11 @@
 # Dev-Labs — Local DevOps Lab
 
+## IMPORTANT: Read docs/must-read/ first
+
+Before working on this project, read `docs/must-read/00-start-here.md`. It contains
+gotchas, workarounds, and design decisions that are NOT obvious from the code.
+Especially 03-gotchas.md and 06-user-intent.md — they will save you hours.
+
 ## Lab Overview
 
 This is a self-contained local DevOps lab that runs 2 real Spring Boot backends (hint, dlt-manager),

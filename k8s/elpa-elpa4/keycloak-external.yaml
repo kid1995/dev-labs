@@ -1,0 +1,44 @@
+# Keycloak "external" to K8s — simulates corporate OIDC endpoint
+#
+# Production: https://employee.login.int.signal-iduna.org/ (TST)
+#              https://employee.login.signal-iduna.org/ (PRD)
+# Lab:        Keycloak runs in Docker Compose (lab-keycloak on lab-net)
+#
+# DNS aliases so corporate auth hostnames resolve inside K8s.
+# The hint-service ConfigMap has AUTH_URL pointing to the corporate endpoint.
+# These services redirect that DNS to the lab Keycloak.
+---
+# Headless service pointing to Keycloak container IP
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: elpa-elpa4
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: keycloak
+  namespace: elpa-elpa4
+subsets:
+  - addresses:
+      - ip: "KEYCLOAK_IP_PLACEHOLDER"
+    ports:
+      - port: 8080
+---
+# DNS alias: employee.login.int.signal-iduna.org → keycloak (TST)
+# Corporate values use this hostname. ExternalName makes it resolve in K8s.
+apiVersion: v1
+kind: Service
+metadata:
+  name: employee-login-int
+  namespace: elpa-elpa4
+spec:
+  type: ExternalName
+  externalName: keycloak.elpa-elpa4.svc.cluster.local

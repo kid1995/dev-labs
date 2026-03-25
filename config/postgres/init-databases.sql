@@ -1,0 +1,16 @@
+-- Create databases for both backend services
+CREATE DATABASE hint;
+CREATE DATABASE dltmanager;
+
+-- Grant privileges
+\c hint;
+CREATE SCHEMA IF NOT EXISTS hint;
+GRANT ALL ON SCHEMA hint TO db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA hint GRANT ALL ON TABLES TO db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA hint GRANT ALL ON SEQUENCES TO db_user;
+
+\c dltmanager;
+CREATE SCHEMA IF NOT EXISTS dlt_manager;
+GRANT ALL ON SCHEMA dlt_manager TO db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA dlt_manager GRANT ALL ON TABLES TO db_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA dlt_manager GRANT ALL ON SEQUENCES TO db_user;

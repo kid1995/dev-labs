@@ -1,0 +1,42 @@
+{
+  "project": "dlt-frontend",
+  "path": "projects/dlt-frontend",
+  "language": "nodejs",
+  "framework": "angular",
+  "angularVersion": "21.2.4",
+  "nodeVersion": "22.22.1",
+  "buildTool": "npm",
+  "buildCommand": "npm run build -- --configuration production",
+  "outputDir": "dist/dltmanager-ui/browser/",
+  "dockerBaseImage": "nginx:1-alpine",
+  "port": 80,
+  "healthEndpoint": "/",
+  "envFile": "src/environments/environment.prod.ts",
+  "dependencies": {
+    "postgres": { "detected": false },
+    "kafka": { "detected": false },
+    "redis": { "detected": false }
+  },
+  "envVarsNeeded": [
+    "BACKEND_URL",
+    "AUTH_URL"
+  ],
+  "internalDependencies": [
+    "@signal-iduna/ui@5.2.2",
+    "@signal-iduna/ui-angular@5.2.2"
+  ],
+  "apiEndpoints": [
+    "GET /api/events/overview",
+    "GET /api/events/overview/{id}",
+    "GET /api/events/details/{id}",
+    "POST /api/events/re-processing/{id}",
+    "DELETE /api/events/{id}"
+  ],
+  "auth": {
+    "type": "oidc",
+    "issuer": "https://employee.login.int.signal-iduna.org/",
+    "clientId": "8d12476c2684592b12515daab4ca0ddb72007118-E"
+  },
+  "existingDockerfile": true,
+  "existingHelmChart": false
+}

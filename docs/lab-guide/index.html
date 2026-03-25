@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevOps Lab Guide</title>
+  <style>
+    :root { --primary: #1a3691; --accent: #49d8d7; --bg: #f6f7fb; --text: rgba(0,0,0,.9); --border: #ccd6eb; --code-bg: #eceff8; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SI Sans', -apple-system, sans-serif; color: var(--text); display: flex; min-height: 100vh; }
+    nav { width: 280px; background: var(--primary); color: #fff; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+    nav h1 { font-size: 18px; padding: 0 20px 15px; border-bottom: 1px solid rgba(255,255,255,.2); margin-bottom: 10px; }
+    nav h1 span { color: var(--accent); }
+    nav h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 15px 20px 5px; opacity: .6; }
+    nav a { display: block; padding: 8px 20px; color: rgba(255,255,255,.85); text-decoration: none; font-size: 14px; transition: .15s; }
+    nav a:hover, nav a.active { background: rgba(255,255,255,.1); color: #fff; }
+    nav a.active { border-left: 3px solid var(--accent); padding-left: 17px; }
+    main { margin-left: 280px; flex: 1; padding: 40px; max-width: 900px; }
+    h2 { color: var(--primary); margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid var(--accent); }
+    h3 { color: var(--primary); margin: 20px 0 10px; }
+    p, li { line-height: 1.7; margin-bottom: 8px; }
+    ul, ol { padding-left: 25px; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px; }
+    th { background: var(--primary); color: #fff; padding: 10px 12px; text-align: left; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    tr:nth-child(even) { background: var(--bg); }
+    code { background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+    pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 6px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5; }
+    pre code { background: none; padding: 0; color: inherit; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge-ok { background: #e4f4e4; color: #2e762e; }
+    .badge-warn { background: #fffce3; color: #b8960a; }
+    .badge-err { background: #fff4f6; color: #cc1535; }
+    .badge-sim { background: #e3ebfa; color: #1439e1; }
+    .card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; background: #fff; }
+    .card h4 { color: var(--primary); margin-bottom: 8px; }
+    section { display: none; }
+    section.active { display: block; }
+    .tag { display: inline-block; background: var(--accent); color: var(--primary); padding: 1px 6px; border-radius: 3px; font-size: 11px; font-weight: 600; margin-left: 4px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <h1>🔧 <span>DevOps Lab</span> Guide</h1>
+    <h3>Overview</h3>
+    <a href="#" onclick="show('overview')" class="active" id="nav-overview">Architecture</a>
+    <a href="#" onclick="show('services')" id="nav-services">Services & Ports</a>
+    <a href="#" onclick="show('quickstart')" id="nav-quickstart">Quick Start</a>
+    <h3>Components</h3>
+    <a href="#" onclick="show('gitea')" id="nav-gitea">Gitea (Git Server)</a>
+    <a href="#" onclick="show('jenkins')" id="nav-jenkins">Jenkins (CI/CD)</a>
+    <a href="#" onclick="show('keycloak')" id="nav-keycloak">Keycloak (Auth)</a>
+    <a href="#" onclick="show('postgres')" id="nav-postgres">PostgreSQL</a>
+    <a href="#" onclick="show('kafka')" id="nav-kafka">Kafka</a>
+    <h3>Applications</h3>
+    <a href="#" onclick="show('hint')" id="nav-hint">Hint Backend</a>
+    <a href="#" onclick="show('dlt')" id="nav-dlt">DLT Manager</a>
+    <a href="#" onclick="show('frontend')" id="nav-frontend">DLT Frontend</a>
+    <a href="#" onclick="show('designsystem')" id="nav-designsystem">Design System</a>
+    <h3>Deployment</h3>
+    <a href="#" onclick="show('docker')" id="nav-docker">Docker Compose</a>
+    <a href="#" onclick="show('k8s')" id="nav-k8s">Kubernetes</a>
+    <a href="#" onclick="show('dockerfiles')" id="nav-dockerfiles">Dockerfiles</a>
+    <h3>Developer Tools</h3>
+    <a href="#" onclick="show('cli')" id="nav-cli">CLI Aliases</a>
+    <a href="#" onclick="show('dns')" id="nav-dns">Local DNS</a>
+    <h3>Reference</h3>
+    <a href="#" onclick="show('simulations')" id="nav-simulations">Lab Simulations</a>
+    <a href="#" onclick="show('mistakes')" id="nav-mistakes">Mistakes & Lessons</a>
+    <a href="#" onclick="show('credentials')" id="nav-credentials">Credentials</a>
+  </nav>
+
+  <main>
+    <!-- ========== OVERVIEW ========== -->
+    <section id="overview" class="active">
+      <h2>Architecture Overview</h2>
+      <p>This lab provisions a fully local DevOps environment using Docker Compose, with two real Spring Boot backends and an Angular frontend from Signal Iduna's ELPA:4 project family.</p>
+      <pre><code>┌─────────────────────────────────────────────────┐
+│                  HOST MACHINE                    │
+│                                                  │
+│  ┌─── Tooling ──────────────────────────────┐   │
+│  │  Gitea :3000    Jenkins :8888            │   │
+│  │  Storybook :4201                         │   │
+│  └──────────────────────────────────────────┘   │
+│                                                  │
+│  ┌─── Infrastructure ───────────────────────┐   │
+│  │  PostgreSQL :5432  Kafka :9092/:19092    │   │
+│  │  Keycloak :8180                          │   │
+│  └──────────────────────────────────────────┘   │
+│                                                  │
+│  ┌─── Applications ─────────────────────────┐   │
+│  │  Hint Backend :8080/:8081                │   │
+│  │  DLT Backend  :8082/:8083                │   │
+│  │  DLT Frontend :4200                      │   │
+│  └──────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────┘</code></pre>
+      <h3>Source Projects</h3>
+      <table>
+        <tr><th>Project</th><th>Tech Stack</th><th>Source</th><th>Gitea Repo</th></tr>
+        <tr><td>hint-backend</td><td>Spring Boot 4.0.3, Java 21, Gradle</td><td>combine-hint/hint/</td><td><a href="http://localhost:3000/lab/hint-backend">lab/hint-backend</a></td></tr>
+        <tr><td>dlt-manager</td><td>Spring Boot 4.0.3 + Angular 21</td><td>dlt-manager/</td><td><a href="http://localhost:3000/lab/dlt-manager">lab/dlt-manager</a></td></tr>
+        <tr><td>design-system</td><td>Lit 3.2, Vite, Storybook 10</td><td>design-system/workspace/</td><td><a href="http://localhost:3000/lab/design-system">lab/design-system</a></td></tr>
+      </table>
+    </section>
+
+    <!-- ========== SERVICES ========== -->
+    <section id="services">
+      <h2>Services & Ports</h2>
+      <table>
+        <tr><th>Service</th><th>Port</th><th>URL</th><th>DNS Alias</th></tr>
+        <tr><td>Gitea</td><td>3000, 2222(SSH)</td><td><a href="http://localhost:3000">localhost:3000</a></td><td><a href="http://git.labs.local">git.labs.local</a></td></tr>
+        <tr><td>Jenkins</td><td>8888</td><td><a href="http://localhost:8888">localhost:8888</a></td><td><a href="http://jenkins.labs.local">jenkins.labs.local</a></td></tr>
+        <tr><td>Keycloak</td><td>8180</td><td><a href="http://localhost:8180">localhost:8180</a></td><td><a href="http://keycloak.labs.local">keycloak.labs.local</a></td></tr>
+        <tr><td>PostgreSQL</td><td>5432</td><td>localhost:5432</td><td>—</td></tr>
+        <tr><td>Kafka</td><td>9092(int), 19092(ext)</td><td>localhost:19092</td><td>—</td></tr>
+        <tr><td>Hint Backend</td><td>8080(API), 8081(mgmt)</td><td><a href="http://localhost:8080/api/docs/rest">localhost:8080</a></td><td><a href="http://hint.elpa.local">hint.elpa.local</a></td></tr>
+        <tr><td>DLT Backend</td><td>8082(API), 8083(mgmt)</td><td><a href="http://localhost:8082/api/docs/rest">localhost:8082</a></td><td><a href="http://dlt-api.elpa.local">dlt-api.elpa.local</a></td></tr>
+        <tr><td>DLT Frontend</td><td>4200</td><td><a href="http://localhost:4200">localhost:4200</a></td><td><a href="http://dlt-fe.elpa.local">dlt-fe.elpa.local</a></td></tr>
+        <tr><td>SI Storybook</td><td>4201</td><td><a href="http://localhost:4201">localhost:4201</a></td><td><a href="http://design-system.si.local">design-system.si.local</a></td></tr>
+        <tr><td>Lab Guide</td><td>4202</td><td><a href="http://localhost:4202">localhost:4202</a></td><td><a href="http://docs.labs.local">docs.labs.local</a></td></tr>
+      </table>
+    </section>
+
+    <!-- ========== QUICKSTART ========== -->
+    <section id="quickstart">
+      <h2>Quick Start</h2>
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Docker Desktop with <strong>8 GB+ memory</strong> (Settings → Resources → Memory)</li>
+        <li>Java 21 (Temurin): <code>$JAVA_HOME=/Users/.../temurin-21.0.8/Contents/Home</code></li>
+        <li>Node.js 22.x + npm</li>
+      </ul>
+      <h3>First Time Setup</h3>
+      <pre><code># 1. Build internal Java libraries (jwt-adapter, elpa4-model)
+cd java_libs/jwt-adapter && ./gradlew publishToMavenLocal -Pversion=2.5.0 -x check
+cd java_libs/elpa4-shared-lib/elpa4-model && ./gradlew publishToMavenLocal -Pversion=1.1.1 -x check
+
+# 2. Build applications
+cd dev-labs/src/hint-backend && ./gradlew build -x check -x dependencyCheckAnalyze
+cd dev-labs/src/dlt-manager && ./gradlew build -x check -x dependencyCheckAnalyze -x rewriteRun
+cd dev-labs/src/dlt-manager/frontend && npx ng build --configuration production
+
+# 3. Build Docker images
+docker build -f docker/hint-backend.Dockerfile -t lab/hint-backend:latest src/hint-backend/
+docker build -f docker/dlt-backend.Dockerfile -t lab/dlt-backend:latest src/dlt-manager/
+docker build -f docker/dlt-frontend.Dockerfile -t lab/dlt-frontend:latest src/dlt-manager/frontend/
+
+# 4. Start everything
+cd dev-labs && docker compose up -d
+
+# 5. Copy mavenLocal to Jenkins (after Jenkins starts)
+docker exec lab-jenkins mkdir -p /root/.m2/repository/de/signaliduna/elpa
+docker cp ~/.m2/repository/de/signaliduna/elpa/jwt-adapter lab-jenkins:/root/.m2/repository/de/signaliduna/elpa/
+docker cp ~/.m2/repository/de/signaliduna/elpa/elpa4-model lab-jenkins:/root/.m2/repository/de/signaliduna/elpa/
+docker exec lab-jenkins bash -c 'apt-get update -qq && apt-get install -y -qq docker.io'</code></pre>
+      <h3>Subsequent Starts</h3>
+      <pre><code># With aliases (from anywhere):
+lab-up          # start all, wait for healthy, print URLs
+lab-down        # stop all (data preserved)
+
+# Without aliases:
+cd dev-labs && docker compose up -d</code></pre>
+    </section>
+
+    <!-- ========== GITEA ========== -->
+    <section id="gitea">
+      <h2>Gitea (Git Server)</h2>
+      <div class="card">
+        <h4>What it replaces <span class="tag">LAB SIMULATION</span></h4>
+        <p>Bitbucket DC at <code>git.system.local</code>. Bitbucket DC requires a license and 3GB+ RAM. Gitea uses 50MB and needs no license.</p>
+      </div>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>URL</td><td><a href="http://localhost:3000">http://localhost:3000</a></td></tr>
+        <tr><td>SSH</td><td>localhost:2222</td></tr>
+        <tr><td>Admin</td><td>labadmin / labadmin</td></tr>
+        <tr><td>Organization</td><td>lab</td></tr>
+        <tr><td>Database</td><td>SQLite (embedded)</td></tr>
+      </table>
+      <h3>Repositories</h3>
+      <table>
+        <tr><th>Repo</th><th>URL</th><th>Description</th></tr>
+        <tr><td>hint-backend</td><td><a href="http://localhost:3000/lab/hint-backend">lab/hint-backend</a></td><td>ELPA Hint Service (Spring Boot)</td></tr>
+        <tr><td>dlt-manager</td><td><a href="http://localhost:3000/lab/dlt-manager">lab/dlt-manager</a></td><td>DLT Manager backend + frontend</td></tr>
+        <tr><td>design-system</td><td><a href="http://localhost:3000/lab/design-system">lab/design-system</a></td><td>SI Design System v5.2.2 (Storybook)</td></tr>
+      </table>
+      <h3>Clone a repo</h3>
+      <pre><code>git clone http://labadmin:labadmin@localhost:3000/lab/hint-backend.git</code></pre>
+    </section>
+
+    <!-- ========== JENKINS ========== -->
+    <section id="jenkins">
+      <h2>Jenkins (CI/CD)</h2>
+      <div class="card">
+        <h4>What it replaces <span class="tag">LAB SIMULATION</span></h4>
+        <p>Production Jenkins with <code>si-dp-shared-libs</code> + <code>elpa-shared-lib</code> shared libraries. Lab uses standard declarative pipeline syntax. See <code>Jenkinsfile.lab</code> in each repo for the mapping of original shared-lib calls to standard steps.</p>
+      </div>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>URL</td><td><a href="http://localhost:8888">http://localhost:8888</a></td></tr>
+        <tr><td>Auth</td><td>None (setup wizard disabled)</td></tr>
+        <tr><td>JDK</td><td>21 (bundled in image)</td></tr>
+        <tr><td>Docker</td><td>Socket mounted, CLI installed inside container</td></tr>
+      </table>
+      <h3>Pipeline Jobs</h3>
+      <table>
+        <tr><th>Job</th><th>Jenkinsfile</th><th>Stages</th><th>Status</th></tr>
+        <tr><td>hint-backend</td><td>Jenkinsfile.lab</td><td>Checkout → Build → Test → Analyze → Docker → Deploy</td><td><span class="badge badge-warn">UNSTABLE</span> (tests need Testcontainers)</td></tr>
+        <tr><td>dlt-manager</td><td>Jenkinsfile.lab</td><td>Checkout → Build → Test → Analyze → Docker → Deploy</td><td><span class="badge badge-warn">UNSTABLE</span> (tests need Testcontainers)</td></tr>
+      </table>
+      <h3>Shared Library Function Mapping</h3>
+      <table>
+        <tr><th>Original (si-dp-shared-libs)</th><th>Lab Replacement</th></tr>
+        <tr><td><code>si_git.checkoutBranch()</code></td><td><code>checkout scm</code></td></tr>
+        <tr><td><code>si_java.version("21")</code></td><td><code>tools { jdk 'jdk21' }</code></td></tr>
+        <tr><td><code>si_java.check()</code></td><td><code>./gradlew test || true</code></td></tr>
+        <tr><td><code>si_java.staticAnalysis()</code></td><td>Skipped (no SonarQube)</td></tr>
+        <tr><td><code>si_docker.buildImage()</code></td><td><code>docker build -f Dockerfile.lab</code></td></tr>
+        <tr><td><code>si_openshift.deployApplication()</code></td><td>Skipped (no OpenShift)</td></tr>
+        <tr><td><code>si_npm.ciInstall/ciBuild/ciTest</code></td><td>Skipped (needs Verdaccio)</td></tr>
+        <tr><td><code>publish() to Nexus</code></td><td>Skipped (no internal Nexus)</td></tr>
+        <tr><td><code>si_jenkins.notify()</code></td><td>Skipped (no Bitbucket/RocketChat)</td></tr>
+      </table>
+      <h3>Important: After Jenkins restart</h3>
+      <pre><code># Re-copy mavenLocal deps (lost when container recreated)
+docker exec lab-jenkins mkdir -p /root/.m2/repository/de/signaliduna/elpa
+docker cp ~/.m2/repository/de/signaliduna/elpa/jwt-adapter lab-jenkins:/root/.m2/repository/de/signaliduna/elpa/
+docker cp ~/.m2/repository/de/signaliduna/elpa/elpa4-model lab-jenkins:/root/.m2/repository/de/signaliduna/elpa/
+
+# Re-install Docker CLI (lost when container recreated)
+docker exec lab-jenkins bash -c 'apt-get update -qq && apt-get install -y -qq docker.io >/dev/null 2>&1'</code></pre>
+    </section>
+
+    <!-- ========== KEYCLOAK ========== -->
+    <section id="keycloak">
+      <h2>Keycloak (Identity Provider)</h2>
+      <div class="card">
+        <h4>What it replaces <span class="tag">LAB SIMULATION</span></h4>
+        <p>Corporate OIDC server at <code>https://employee.login.int.signal-iduna.org/</code>. Lab uses Keycloak 24 in dev mode with a pre-imported "lab" realm.</p>
+      </div>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Admin Console</td><td><a href="http://localhost:8180">http://localhost:8180</a></td></tr>
+        <tr><td>Admin</td><td>admin / admin</td></tr>
+        <tr><td>Realm</td><td>lab</td></tr>
+        <tr><td>OIDC Discovery</td><td><a href="http://localhost:8180/realms/lab/.well-known/openid-configuration">/.well-known/openid-configuration</a></td></tr>
+      </table>
+      <h3>Test Users</h3>
+      <table>
+        <tr><th>Username</th><th>Password</th><th>Sub ID</th><th>Roles</th></tr>
+        <tr><td>admin</td><td>admin</td><td>S000325</td><td>admin, user</td></tr>
+        <tr><td>testuser</td><td>test</td><td>U116330</td><td>user</td></tr>
+      </table>
+      <h3>OIDC Client</h3>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Client ID</td><td><code>8d12476c2684592b12515daab4ca0ddb72007118-E</code></td></tr>
+        <tr><td>Type</td><td>Public (Authorization Code + PKCE)</td></tr>
+        <tr><td>Scopes</td><td>openid, si_common</td></tr>
+        <tr><td>Redirect URIs</td><td>http://localhost:4200/*</td></tr>
+      </table>
+      <h3>Get a token (curl)</h3>
+      <pre><code>curl -X POST http://localhost:8180/realms/lab/protocol/openid-connect/token \
+  -d "grant_type=password&client_id=8d12476c2684592b12515daab4ca0ddb72007118-E&username=admin&password=admin&scope=openid"</code></pre>
+    </section>
+
+    <!-- ========== POSTGRES ========== -->
+    <section id="postgres">
+      <h2>PostgreSQL</h2>
+      <div class="card">
+        <h4>What it replaces <span class="tag">LAB SIMULATION</span></h4>
+        <p>Managed PostgreSQL at <code>vipsiae11t.system-a.local</code> (TST) / <code>vipsiae11p.system-a.local</code> (PRD). Lab uses a single container with both databases. Credentials are hardcoded (production uses K8s secrets/Vault).</p>
+      </div>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Host</td><td>localhost:5432</td></tr>
+        <tr><td>User</td><td>db_user</td></tr>
+        <tr><td>Password</td><td>db_password</td></tr>
+      </table>
+      <h3>Databases</h3>
+      <table>
+        <tr><th>Database</th><th>Schema</th><th>Used By</th></tr>
+        <tr><td>hint</td><td>hint</td><td>hint-backend (Flyway migrations)</td></tr>
+        <tr><td>dltmanager</td><td>dlt_manager</td><td>dlt-backend (Flyway migrations)</td></tr>
+      </table>
+      <pre><code># Connect
+psql -h localhost -U db_user -d hint
+psql -h localhost -U db_user -d dltmanager</code></pre>
+    </section>
+
+    <!-- ========== KAFKA ========== -->
+    <section id="kafka">
+      <h2>Apache Kafka</h2>
+      <div class="card">
+        <h4>What it replaces <span class="tag">LAB SIMULATION</span></h4>
+        <p>Multi-node Kafka cluster at <code>bootstrap-nop.kafka.svc.cluster.local:9443</code> with SASL_PLAINTEXT + OAUTHBEARER auth. Lab uses single-node KRaft with PLAINTEXT (no auth).</p>
+      </div>
+      <table>
+        <tr><th>Setting</th><th>Lab</th><th>Production</th></tr>
+        <tr><td>Broker (internal)</td><td>kafka:9092</td><td>bootstrap-nop.kafka.svc:9443</td></tr>
+        <tr><td>Broker (external)</td><td>localhost:19092</td><td>N/A</td></tr>
+        <tr><td>Auth</td><td>PLAINTEXT</td><td>SASL_PLAINTEXT + OAUTHBEARER</td></tr>
+        <tr><td>Replication</td><td>1</td><td>3</td></tr>
+      </table>
+      <h3>Topics</h3>
+      <table>
+        <tr><th>Topic</th><th>Consumer</th></tr>
+        <tr><td>elpa-hint-created</td><td>hint-backend (kafka-elpa-hint)</td></tr>
+        <tr><td>elpa-dlt</td><td>dlt-backend (dlt-manager-consumer)</td></tr>
+      </table>
+    </section>
+
+    <!-- ========== HINT ========== -->
+    <section id="hint">
+      <h2>Hint Backend</h2>
+      <p>ELPA Hint Service — receives "Hints" (notices) via REST API and Kafka, stores in PostgreSQL.</p>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>API</td><td><a href="http://localhost:8080/api/hints">localhost:8080/api/hints</a> (requires auth)</td></tr>
+        <tr><td>Health</td><td><a href="http://localhost:8081/health">localhost:8081/health</a></td></tr>
+        <tr><td>Swagger</td><td><a href="http://localhost:8080/api/docs/rest">localhost:8080/api/docs/rest</a></td></tr>
+        <tr><td>Prometheus</td><td><a href="http://localhost:8081/metrics/prometheus">localhost:8081/metrics/prometheus</a></td></tr>
+      </table>
+      <h3>Gradle Modules</h3>
+      <table>
+        <tr><th>Module</th><th>Type</th><th>Purpose</th></tr>
+        <tr><td>hint-model</td><td>Library</td><td>DTOs and validation annotations</td></tr>
+        <tr><td>hint-client</td><td>Library</td><td>Feign client + jwt-adapter</td></tr>
+        <tr><td>hint-service</td><td>Application</td><td>Spring Boot service (main deployable)</td></tr>
+      </table>
+      <h3>Internal Dependencies <span class="tag">LAB SIMULATION</span></h3>
+      <p><code>jwt-adapter:2.5.1-SNAPSHOT</code> — built from <code>java_libs/jwt-adapter/</code> and published to mavenLocal.</p>
+    </section>
+
+    <!-- ========== DLT ========== -->
+    <section id="dlt">
+      <h2>DLT Manager Backend</h2>
+      <p>Manages Dead Letter Topic (DLT) Kafka events — retry, inspect, delete failed messages.</p>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>API</td><td><a href="http://localhost:8082/api/events/overview">localhost:8082/api/events/overview</a> (requires auth)</td></tr>
+        <tr><td>Health</td><td><a href="http://localhost:8083/health">localhost:8083/health</a></td></tr>
+        <tr><td>Prometheus</td><td><a href="http://localhost:8083/metrics/prometheus">localhost:8083/metrics/prometheus</a></td></tr>
+      </table>
+      <h3>Internal Dependencies <span class="tag">LAB SIMULATION</span></h3>
+      <ul>
+        <li><code>jwt-adapter:2.5.0</code> — built from <code>java_libs/jwt-adapter/</code></li>
+        <li><code>elpa4-model:1.1.1</code> — built from <code>java_libs/elpa4-shared-lib/elpa4-model/</code></li>
+      </ul>
+    </section>
+
+    <!-- ========== FRONTEND ========== -->
+    <section id="frontend">
+      <h2>DLT Manager Frontend</h2>
+      <p>Angular 21 SPA using Signal Iduna Design System v5.2.2 web components.</p>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>URL</td><td><a href="http://localhost:4200">localhost:4200</a></td></tr>
+        <tr><td>Framework</td><td>Angular 21.2.4</td></tr>
+        <tr><td>UI Library</td><td>@signal-iduna/ui 5.2.2 + @signal-iduna/ui-angular 5.2.2</td></tr>
+        <tr><td>Auth</td><td>OIDC Authorization Code + PKCE via angular-oauth2-oidc</td></tr>
+      </table>
+      <h3>Key Pattern: si-button requires native &lt;button&gt;</h3>
+      <p>The design system's <code>::slotted(button)</code> CSS selector ONLY targets a native <code>&lt;button&gt;</code> element slotted inside <code>&lt;si-button&gt;</code>. Using <code>&lt;span&gt;</code> results in an unstyled 19px-tall element.</p>
+      <pre><code>&lt;!-- WRONG: unstyled --&gt;
+&lt;si-button si-variant="primary"&gt;
+  &lt;span&gt;Click me&lt;/span&gt;
+&lt;/si-button&gt;
+
+&lt;!-- CORRECT: styled by design system --&gt;
+&lt;si-button si-variant="primary"&gt;
+  &lt;button&gt;Click me&lt;/button&gt;
+&lt;/si-button&gt;</code></pre>
+      <p>Reference: <a href="http://localhost:4201/?path=/story/komponenten-button-button--primary">Storybook → Button → Primary</a></p>
+    </section>
+
+    <!-- ========== DESIGN SYSTEM ========== -->
+    <section id="designsystem">
+      <h2>Signal Iduna Design System</h2>
+      <table>
+        <tr><th>Setting</th><th>Value</th></tr>
+        <tr><td>Storybook</td><td><a href="http://localhost:4201">localhost:4201</a></td></tr>
+        <tr><td>Version</td><td>5.2.2</td></tr>
+        <tr><td>Technology</td><td>Lit 3.2 Web Components + Angular wrappers</td></tr>
+        <tr><td>Source</td><td><a href="http://localhost:3000/lab/design-system">Gitea: lab/design-system</a></td></tr>
+      </table>
+      <h3>Key packages</h3>
+      <table>
+        <tr><th>Package</th><th>Purpose</th></tr>
+        <tr><td>@signal-iduna/ui</td><td>Core Lit web components (si-button, si-heading, etc.)</td></tr>
+        <tr><td>@signal-iduna/ui-angular</td><td>Angular proxy wrappers (SiButtonNg, SiHeadingNg, etc.)</td></tr>
+      </table>
+    </section>
+
+    <!-- ========== DOCKER ========== -->
+    <section id="docker">
+      <h2>Docker Compose Deployment</h2>
+      <pre><code># Start everything
+cd dev-labs && docker compose up -d
+
+# Start specific services
+docker compose up -d postgres kafka keycloak
+docker compose up -d hint-backend dlt-backend dlt-frontend
+
+# View logs
+docker compose logs -f hint-backend
+
+# Restart a service
+docker compose restart dlt-frontend
+
+# Stop everything
+docker compose down</code></pre>
+      <h3>Docker Desktop Requirements</h3>
+      <ul>
+        <li>Memory: <strong>8 GB minimum</strong> (Settings → Resources → Memory)</li>
+        <li>Disk: ~15 GB for images and volumes</li>
+      </ul>
+    </section>
+
+    <!-- ========== K8S ========== -->
+    <section id="k8s">
+      <h2>Kubernetes Deployment</h2>
+      <p>K8s manifests are in <code>k8s/</code> directory. Uses k3d + Istio.</p>
+      <pre><code># Setup (requires k3d, kubectl, istioctl)
+./scripts/setup-k8s.sh
+
+# Add to /etc/hosts
+127.0.0.1 hint.lab.local dlt.lab.local dlt-ui.lab.local keycloak.lab.local
+
+# Port-forward (alternative to Istio gateway)
+kubectl port-forward svc/hint-backend -n apps-dev 8080:8080
+kubectl port-forward svc/dlt-backend -n apps-dev 8082:8080</code></pre>
+    </section>
+
+    <!-- ========== DOCKERFILES ========== -->
+    <section id="dockerfiles">
+      <h2>Dockerfiles</h2>
+      <div class="card">
+        <h4>Base Image Mapping <span class="tag">LAB SIMULATION</span></h4>
+        <table>
+          <tr><th>Original (Internal Registry)</th><th>Lab (Public)</th></tr>
+          <tr><td><code>prod.docker.system.local/baseimages/sda-jre21-alpine:100</code></td><td><code>eclipse-temurin:21-jre-alpine</code></td></tr>
+          <tr><td><code>prod.docker.system.local/baseimages/sda-nginx-1-alpine:69</code></td><td><code>nginx:1-alpine</code></td></tr>
+        </table>
+      </div>
+      <h3>Frontend Dockerfile Special Handling</h3>
+      <ul>
+        <li><strong>scripts bundle</strong>: Angular emits <code>scripts-*.js</code> with <code>defer</code> but the file uses ES <code>export</code> syntax → stripped via sed</li>
+        <li><strong>customElements.define guard</strong>: prevents double registration of web components</li>
+        <li><strong>Runtime URL substitution</strong>: replaces <code>NOT_SET_BACKEND_URL</code> and hardcoded OIDC URLs at container start</li>
+      </ul>
+    </section>
+
+    <!-- ========== CLI ALIASES ========== -->
+    <section id="cli">
+      <h2>CLI Aliases</h2>
+      <p>Shell aliases are defined in <code>~/.zshrc</code>. They let you manage the lab from anywhere without <code>cd</code>-ing into <code>dev-labs/</code>.</p>
+
+      <h3>Setup</h3>
+      <p>These aliases are already added to your <code>~/.zshrc</code>. If starting fresh, add:</p>
+      <pre><code># Dev-Labs shortcuts (add to ~/.zshrc)
+export DEV_LABS="$HOME/Downloads/github-buffer/dev-labs"
+alias lab-git="$DEV_LABS/scripts/lab-git.sh"
+alias lab-up="$DEV_LABS/scripts/lab-up.sh"
+alias lab-down="$DEV_LABS/scripts/lab-down.sh"
+alias lab-docs="$DEV_LABS/scripts/lab-docs.sh"
+alias lab-routes="code $DEV_LABS/config/proxy/routes.yaml"
+alias lab-dns="$DEV_LABS/scripts/setup-dns.sh"
+alias lab-cd="cd $DEV_LABS"</code></pre>
+      <p>Reload with: <code>source ~/.zshrc</code></p>
+
+      <h3>Available Commands</h3>
+      <table>
+        <tr><th>Alias</th><th>What it does</th><th>Example</th></tr>
+        <tr><td><code>lab-up</code></td><td>Start all services, wait for healthy, print URLs</td><td><code>lab-up</code></td></tr>
+        <tr><td><code>lab-down</code></td><td>Stop all services (data preserved in volumes)</td><td><code>lab-down</code></td></tr>
+        <tr><td><code>lab-down --clean</code></td><td>Stop all and destroy volumes</td><td><code>lab-down --clean</code></td></tr>
+        <tr><td><code>lab-docs</code></td><td>Start only Storybook + Lab Guide</td><td><code>lab-docs</code></td></tr>
+        <tr><td><code>lab-docs --stop</code></td><td>Stop Storybook + Lab Guide</td><td><code>lab-docs --stop</code></td></tr>
+        <tr><td><code>lab-cd</code></td><td>cd into dev-labs directory</td><td><code>lab-cd</code></td></tr>
+      </table>
+
+      <h3>lab-git — Safe Gitea Operations</h3>
+      <p>Wraps git commands with safety checks. Refuses to push if <code>origin</code> doesn't point to Gitea.</p>
+      <table>
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td><code>lab-git status</code></td><td>Show all repos: branch, last commit, dirty/clean</td></tr>
+        <tr><td><code>lab-git push &lt;repo&gt;</code></td><td>Push one repo to Gitea (with safety check)</td></tr>
+        <tr><td><code>lab-git push-all</code></td><td>Push all lab repos to Gitea</td></tr>
+        <tr><td><code>lab-git diff &lt;repo&gt;</code></td><td>Compare <code>main</code> (lab) vs <code>si</code> (original)</td></tr>
+        <tr><td><code>lab-git log &lt;repo&gt;</code></td><td>Show recent commits</td></tr>
+        <tr><td><code>lab-git open &lt;repo&gt;</code></td><td>Open repo in browser</td></tr>
+        <tr><td><code>lab-git repos</code></td><td>List all Gitea repos via API</td></tr>
+      </table>
+      <p>Available repos: <code>hint-backend</code>, <code>dlt-manager</code>, <code>design-system</code></p>
+
+      <h3>lab-dns — Local DNS Management</h3>
+      <p>Generates nginx proxy config and <code>/etc/hosts</code> entries from <code>config/proxy/routes.yaml</code>.</p>
+      <table>
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td><code>lab-dns --list</code></td><td>Show all configured routes</td></tr>
+        <tr><td><code>sudo lab-dns</code></td><td>Add entries to /etc/hosts</td></tr>
+        <tr><td><code>sudo lab-dns --remove</code></td><td>Remove entries from /etc/hosts</td></tr>
+        <tr><td><code>sudo lab-dns --regenerate</code></td><td>Regenerate nginx.conf + update /etc/hosts</td></tr>
+        <tr><td><code>lab-routes</code></td><td>Open routes.yaml in VS Code to edit hostnames</td></tr>
+      </table>
+
+      <h3>Script Dependencies</h3>
+      <table>
+        <tr><th>Tool</th><th>Used by</th><th>Install</th></tr>
+        <tr><td><code>yq</code></td><td>setup-dns.sh — parses routes.yaml</td><td><code>brew install yq</code></td></tr>
+        <tr><td><code>jq</code></td><td>lab-git.sh — parses Gitea API responses</td><td><code>brew install jq</code></td></tr>
+      </table>
+    </section>
+
+    <!-- ========== LOCAL DNS ========== -->
+    <section id="dns">
+      <h2>Local DNS (Pretty URLs)</h2>
+      <p>Instead of remembering port numbers, use human-readable hostnames via a reverse proxy.</p>
+
+      <h3>How it works</h3>
+      <ol>
+        <li><code>/etc/hosts</code> maps <code>*.labs.local</code> / <code>*.elpa.local</code> / <code>*.si.local</code> to <code>127.0.0.1</code></li>
+        <li>An nginx reverse proxy container (<code>lab-proxy</code>) on port 80 routes by hostname to the right container</li>
+        <li>All hostnames are defined in one file: <code>config/proxy/routes.yaml</code></li>
+      </ol>
+
+      <h3>Current Routes</h3>
+      <table>
+        <tr><th>Hostname</th><th>Target</th><th>Service</th></tr>
+        <tr><td><a href="http://docs.labs.local">docs.labs.local</a></td><td>lab-guide:80</td><td>Lab Guide (this page)</td></tr>
+        <tr><td><a href="http://design-system.si.local">design-system.si.local</a></td><td>lab-storybook:80</td><td>SI Design System Storybook</td></tr>
+        <tr><td><a href="http://git.labs.local">git.labs.local</a></td><td>lab-gitea:3000</td><td>Gitea</td></tr>
+        <tr><td><a href="http://jenkins.labs.local">jenkins.labs.local</a></td><td>lab-jenkins:8080</td><td>Jenkins</td></tr>
+        <tr><td><a href="http://keycloak.labs.local">keycloak.labs.local</a></td><td>lab-keycloak:8080</td><td>Keycloak</td></tr>
+        <tr><td><a href="http://hint.elpa.local">hint.elpa.local</a></td><td>lab-hint-backend:8080</td><td>Hint API + Swagger</td></tr>
+        <tr><td><a href="http://dlt-api.elpa.local">dlt-api.elpa.local</a></td><td>lab-dlt-backend:8080</td><td>DLT Manager API + Swagger</td></tr>
+        <tr><td><a href="http://dlt-fe.elpa.local">dlt-fe.elpa.local</a></td><td>lab-dlt-frontend:80</td><td>DLT Frontend</td></tr>
+      </table>
+
+      <h3>Setup</h3>
+      <pre><code># One-time: add hosts + generate nginx config
+sudo lab-dns --regenerate
+
+# Start the proxy
+docker compose up -d proxy</code></pre>
+
+      <h3>Adding a new route</h3>
+      <pre><code># 1. Open the config
+lab-routes
+
+# 2. Add a new entry to routes.yaml:
+#   - hostname: myapp.labs.local
+#     target: my-container:8080
+#     description: My App
+
+# 3. Regenerate and restart
+sudo lab-dns --regenerate
+docker compose restart proxy</code></pre>
+
+      <h3>Removing DNS entries</h3>
+      <pre><code>sudo lab-dns --remove</code></pre>
+    </section>
+
+    <!-- ========== SIMULATIONS ========== -->
+    <section id="simulations">
+      <h2>All Lab Simulations</h2>
+      <p>Every file with <code>[LAB SIMULATION]</code> comments. Search: <code>grep -r "LAB SIMULATION" dev-labs/</code></p>
+      <table>
+        <tr><th>Category</th><th>Original</th><th>Lab</th><th>Files</th></tr>
+        <tr><td>Git Server</td><td>Bitbucket DC</td><td>Gitea</td><td>docker-compose.yml</td></tr>
+        <tr><td>CI/CD</td><td>Jenkins + shared libs</td><td>Jenkins + standard pipeline</td><td>Jenkinsfile.lab</td></tr>
+        <tr><td>Docker Registry</td><td>dev.docker.system.local</td><td>Local <code>lab/*</code> tags</td><td>Dockerfiles, Jenkinsfile.lab</td></tr>
+        <tr><td>Docker Base Images</td><td>sda-jre21-alpine, sda-nginx</td><td>eclipse-temurin, nginx:alpine</td><td>docker/*.Dockerfile</td></tr>
+        <tr><td>OIDC Provider</td><td>employee.login.int.signal-iduna.org</td><td>Keycloak localhost:8180</td><td>docker-compose.yml, Dockerfile</td></tr>
+        <tr><td>Database</td><td>Managed PostgreSQL</td><td>Container PostgreSQL</td><td>docker-compose.yml</td></tr>
+        <tr><td>Kafka Auth</td><td>SASL_PLAINTEXT + OAUTHBEARER</td><td>PLAINTEXT (no auth)</td><td>docker-compose.yml</td></tr>
+        <tr><td>Maven Dependencies</td><td>m2repo.system.local (Nexus)</td><td>mavenLocal</td><td>build.gradle, bootstrap.sh</td></tr>
+        <tr><td>npm Packages</td><td>npmrepo.system.local (Verdaccio)</td><td>node_modules copied</td><td>.npmrc</td></tr>
+        <tr><td>CVE Suppression</td><td>git.system.local download</td><td>try-catch wrapped</td><td>hint build.gradle</td></tr>
+        <tr><td>SonarQube</td><td>sonarqube.system.local</td><td>Skipped</td><td>Jenkinsfile.lab</td></tr>
+        <tr><td>OpenShift Deploy</td><td>si_openshift.deployApplication()</td><td>Skipped</td><td>Jenkinsfile.lab</td></tr>
+      </table>
+    </section>
+
+    <!-- ========== MISTAKES ========== -->
+    <section id="mistakes">
+      <h2>Mistakes & Lessons Learned</h2>
+      <p>Every wrong decision and error encountered during lab setup, in chronological order.</p>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #1</span> downloadSuppression fails at Gradle config time</h4>
+        <p><strong>What happened:</strong> hint <code>build.gradle</code> calls <code>downloadSuppression()</code> during Gradle configuration phase — tries to reach <code>git.system.local</code>. Even <code>-x dependencyCheckAnalyze</code> doesn't skip it.</p>
+        <p><strong>Fix:</strong> Wrapped in try-catch. <strong>Lesson:</strong> Gradle config-phase code runs unconditionally.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #2</span> Version mismatch for mavenLocal dependencies</h4>
+        <p><strong>What happened:</strong> jwt-adapter published as 2.5.1-SNAPSHOT but dlt-manager needs exact 2.5.0. Same for elpa4-model.</p>
+        <p><strong>Fix:</strong> Published with <code>-Pversion=2.5.0</code>. <strong>Lesson:</strong> Always check exact version required before publishing.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #3</span> Modified original source code</h4>
+        <p><strong>What happened:</strong> Changed <code>combine-hint/hint/build.gradle</code> directly instead of working on a copy.</p>
+        <p><strong>Fix:</strong> Reverted, cloned to <code>dev-labs/src/</code>, applied changes only there. <strong>Lesson:</strong> Never modify original project repos.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #4</span> Kafka healthcheck path wrong</h4>
+        <p><strong>What happened:</strong> <code>kafka-broker-api-versions.sh</code> not in PATH inside Apache Kafka container. Exit code 127.</p>
+        <p><strong>Fix:</strong> Full path <code>/opt/kafka/bin/kafka-broker-api-versions.sh</code>. <strong>Lesson:</strong> Always check tool paths inside containers.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #5</span> Kafka internal/external listener confusion</h4>
+        <p><strong>What happened:</strong> Single PLAINTEXT listener with <code>localhost:9092</code> — backends inside Docker can't reach it.</p>
+        <p><strong>Fix:</strong> Added EXTERNAL listener on port 19092 for host, PLAINTEXT on 9092 for inter-container. <strong>Lesson:</strong> Docker networking requires separate listeners.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #6</span> Bitbucket DC — HV000149 validation error</h4>
+        <p><strong>What happened:</strong> Bitbucket DC setup wizard throws <code>HV000149: An exception occurred during message interpolation</code> on admin user creation. Hibernate Validator bug with newer JDK.</p>
+        <p><strong>Decision:</strong> Tried multiple fixes (JVM args, version downgrade, memory increase). All failed. <strong>Lesson:</strong> Don't fight enterprise software bugs. Switched to Gitea.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #7</span> GitLab CE — wrong platform + OOM + password rejection</h4>
+        <p><strong>What happened:</strong> (1) amd64 image on ARM Mac, (2) OOM with 3.8GB Docker memory, (3) password rejected as "commonly used".</p>
+        <p><strong>Decision:</strong> Tried ARM image, increased memory to 8GB, random password — still took 10+ min to start. <strong>Lesson:</strong> GitLab CE is too heavy for a lab. Use Gitea.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #8</span> Frontend: Unexpected token 'export'</h4>
+        <p><strong>What happened:</strong> Angular emits <code>scripts-*.js</code> with <code>defer</code> but the file contains ES module <code>export</code> syntax.</p>
+        <p><strong>Fix:</strong> Strip the <code>export{...}</code> via sed + load as classic script. <strong>Lesson:</strong> Check script type before assuming module/non-module.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #9</span> Frontend: CustomElementRegistry double registration</h4>
+        <p><strong>What happened:</strong> Both scripts bundle and Angular chunks register same web components → "name already used" error.</p>
+        <p><strong>Fix:</strong> Guard <code>customElements.define</code> to be idempotent. <strong>Lesson:</strong> Web component registration is global and irreversible.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #10</span> OIDC: invalid issuer trailing slash</h4>
+        <p><strong>What happened:</strong> Frontend expects <code>http://localhost:8180/realms/lab/</code> but Keycloak returns <code>http://localhost:8180/realms/lab</code> (no trailing slash).</p>
+        <p><strong>Fix:</strong> Removed trailing slash from AUTH_URL in docker-compose. <strong>Lesson:</strong> OIDC issuer URLs must match exactly.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #11</span> OIDC: Invalid scopes: openid si_common</h4>
+        <p><strong>What happened:</strong> Keycloak client didn't have <code>si_common</code> as a default scope.</p>
+        <p><strong>Fix:</strong> Added to <code>defaultClientScopes</code> in lab-realm.json. <strong>Lesson:</strong> OIDC scopes must be configured per-client, not just per-realm.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #12</span> si-button unstyled — invented own CSS</h4>
+        <p><strong>What happened:</strong> Button rendered as unstyled 19px text. Tried multiple hacks: idempotent define guard, script load order, shadow DOM style injection via MutationObserver. Used wrong colors (dark blue bg instead of teal).</p>
+        <p><strong>Root cause:</strong> Template used <code>&lt;span&gt;</code> instead of <code>&lt;button&gt;</code>. Design system uses <code>::slotted(button)</code> CSS selector.</p>
+        <p><strong>Fix:</strong> Changed <code>&lt;span&gt;Login with SSO&lt;/span&gt;</code> to <code>&lt;button&gt;Login with SSO&lt;/button&gt;</code>. Removed all patches.</p>
+        <p><strong>Lesson:</strong> Always check the Storybook for correct component usage before inventing workarounds. The <code>si-patch.js</code> hack produced wrong colors and wrong architecture.</p>
+      </div>
+
+      <div class="card">
+        <h4><span class="badge badge-err">Error #13</span> .gitignore too aggressive in dlt-manager clone</h4>
+        <p><strong>What happened:</strong> Original .gitignore excluded <code>gradle/</code>, <code>*.gradle</code>, <code>config/</code>, <code>*.md</code>, <code>*.txt</code> — Jenkins couldn't find Gradle wrapper, settings.gradle, or Java source files in config/ package.</p>
+        <p><strong>Fix:</strong> Rewrote .gitignore to only exclude build artifacts. <strong>Lesson:</strong> Always verify git content after pushing, especially with aggressive gitignore.</p>
+      </div>
+    </section>
+
+    <!-- ========== CREDENTIALS ========== -->
+    <section id="credentials">
+      <h2>All Credentials</h2>
+      <table>
+        <tr><th>Service</th><th>Username</th><th>Password</th><th>Notes</th></tr>
+        <tr><td>Gitea</td><td>labadmin</td><td>labadmin</td><td>Admin user</td></tr>
+        <tr><td>Jenkins</td><td colspan="2">No auth</td><td>Setup wizard disabled</td></tr>
+        <tr><td>Keycloak Admin</td><td>admin</td><td>admin</td><td>Admin console</td></tr>
+        <tr><td>Keycloak User (admin)</td><td>admin</td><td>admin</td><td>Lab realm, sub=S000325</td></tr>
+        <tr><td>Keycloak User (test)</td><td>testuser</td><td>test</td><td>Lab realm, sub=U116330</td></tr>
+        <tr><td>PostgreSQL</td><td>db_user</td><td>db_password</td><td>All databases</td></tr>
+        <tr><td>Kafka</td><td colspan="2">No auth</td><td>PLAINTEXT</td></tr>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    function show(id) {
+      document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.getElementById('nav-' + id).classList.add('active');
+    }
+  </script>
+</body>
+</html>

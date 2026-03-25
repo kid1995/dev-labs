@@ -1,0 +1,15 @@
+meta {
+  name: Get DLT Events Overview
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{dlt_url}}/api/events/overview
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

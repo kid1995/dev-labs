@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zilliz-context__index_codebase",
+      "Bash(chmod:*)",
+      "Bash(curl -s http://docs.labs.local/)"
+    ]
+  }
+}

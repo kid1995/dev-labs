@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-03-21T00:00:00Z",
+  "projects": ["hint-backend", "dlt-backend", "dlt-frontend"],
+  "sharedInfra": {
+    "postgres": {
+      "needed": true,
+      "sharedBy": ["hint-backend", "dlt-backend"],
+      "version": "15",
+      "databases": {
+        "hint": { "schema": "hint", "user": "hint_user" },
+        "dltmanager": { "schema": "dlt_manager", "user": "dlt_user" }
+      }
+    },
+    "kafka": {
+      "needed": true,
+      "sharedBy": ["hint-backend", "dlt-backend"],
+      "version": "3.7",
+      "useKRaft": true,
+      "topics": ["elpa-hint-created", "elpa-dlt"]
+    },
+    "redis": { "needed": false },
+    "mongodb": { "needed": false },
+    "minio": { "needed": false },
+    "keycloak": {
+      "needed": true,
+      "reason": "Both backends require OAuth2 resource server - need local IdP for testing",
+      "version": "24"
+    }
+  },
+  "kubernetes": {
+    "namespaces": ["apps-dev", "apps-staging"],
+    "istio": true,
+    "gateway": "istio",
+    "nginxIngress": false,
+    "certManager": false
+  }
+}

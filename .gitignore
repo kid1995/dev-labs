@@ -1,0 +1,5 @@
+# Source project clones (synced from github-buffer via scripts/sync-src.sh)
+# These have their own .git directories for Gitea and are not tracked here.
+src/hint-backend/
+src/dlt-manager/
+src/design-system/

@@ -1,0 +1,94 @@
+---
+# Hint Backend API
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: hint-backend-vs
+  namespace: apps-dev
+spec:
+  hosts:
+    - "hint.lab.local"
+  gateways:
+    - lab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api
+      route:
+        - destination:
+            host: hint-backend
+            port:
+              number: 8080
+    - match:
+        - uri:
+            prefix: /health
+      route:
+        - destination:
+            host: hint-backend
+            port:
+              number: 8081
+---
+# DLT Backend API
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: dlt-backend-vs
+  namespace: apps-dev
+spec:
+  hosts:
+    - "dlt.lab.local"
+  gateways:
+    - lab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /api
+      route:
+        - destination:
+            host: dlt-backend
+            port:
+              number: 8080
+    - match:
+        - uri:
+            prefix: /health
+      route:
+        - destination:
+            host: dlt-backend
+            port:
+              number: 8081
+---
+# DLT Frontend
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: dlt-frontend-vs
+  namespace: apps-dev
+spec:
+  hosts:
+    - "dlt-ui.lab.local"
+  gateways:
+    - lab-gateway
+  http:
+    - route:
+        - destination:
+            host: dlt-frontend
+            port:
+              number: 80
+---
+# Keycloak
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: keycloak-vs
+  namespace: apps-dev
+spec:
+  hosts:
+    - "keycloak.lab.local"
+  gateways:
+    - lab-gateway
+  http:
+    - route:
+        - destination:
+            host: keycloak
+            port:
+              number: 8080

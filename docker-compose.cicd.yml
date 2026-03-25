@@ -1,0 +1,97 @@
+# CI/CD Tooling Stack — Gitea, Jenkins, Lab Guide, Storybook
+# Usage: docker compose -f docker-compose.cicd.yml up -d
+# Network: shares "lab-net" with docker-compose.apps.yml
+
+services:
+  # [LAB SIMULATION] Git server:
+  #   Original: Bitbucket DC at git.system.local (requires license, 3GB+ RAM)
+  #   Lab:      Gitea — lightweight, no license, 50MB RAM, same git push/pull workflow
+  gitea:
+    image: gitea/gitea:1.22
+    container_name: lab-gitea
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    environment:
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__ROOT_URL: http://localhost:3000
+      GITEA__server__SSH_PORT: 2222
+      GITEA__security__INSTALL_LOCK: "true"
+    volumes:
+      - gitea-data:/data
+    networks:
+      - lab-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/v1/version || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # [LAB SIMULATION] CI/CD:
+  #   Original: Jenkins with si-dp-shared-libs + elpa-shared-lib, connected to Bitbucket DC
+  #   Lab:      Jenkins LTS with setup wizard disabled, Docker socket mounted for image builds
+  #   Note:     docker.io CLI installed manually inside container (apt-get install docker.io)
+  #             mavenLocal deps (jwt-adapter, elpa4-model) copied to /root/.m2/ inside container
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: lab-jenkins
+    ports:
+      - "8888:8080"
+      - "50000:50000"
+    user: root
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - lab-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/login || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # Lab Guide — documentation site for this DevOps lab
+  lab-guide:
+    image: nginx:1-alpine
+    container_name: lab-guide
+    ports:
+      - "4202:80"
+    volumes:
+      - ./docs/lab-guide:/usr/share/nginx/html:ro
+    networks:
+      - lab-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # [LAB] Signal Iduna Design System Storybook
+  #   Built from libs/storybook-host in the design-system workspace
+  #   Source: http://localhost:3000/lab/design-system
+  storybook:
+    image: nginx:1-alpine
+    container_name: lab-storybook
+    ports:
+      - "4201:80"
+    volumes:
+      - ./src/design-system/dist/storybook/storybook-host:/usr/share/nginx/html:ro
+    networks:
+      - lab-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  gitea-data:
+  jenkins-data:
+
+networks:
+  lab-net:
+    name: lab-net

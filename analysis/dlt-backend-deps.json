@@ -1,0 +1,74 @@
+{
+  "project": "dlt-backend",
+  "path": "projects/dlt-backend",
+  "language": "java",
+  "framework": "spring-boot",
+  "springBootVersion": "4.0.3",
+  "javaVersion": "21",
+  "buildTool": "gradle",
+  "gradleVersion": "8.922",
+  "buildCommand": "./gradlew build -x check",
+  "artifactPattern": "backend/build/install/backend/",
+  "dockerBaseImage": "eclipse-temurin:21-jre-alpine",
+  "ports": {
+    "http": 8080,
+    "management": 8081
+  },
+  "healthEndpoint": "/health",
+  "livenessEndpoint": "/health/liveness",
+  "readinessEndpoint": "/health/readiness",
+  "managementPort": 8081,
+  "contextPath": "/api",
+  "envFile": "backend/src/main/resources/application.yml",
+  "modules": ["backend", "error-handler-lib"],
+  "dependencies": {
+    "postgres": {
+      "detected": true,
+      "signals": [
+        "spring.datasource.url=jdbc:postgresql in application.yml",
+        "spring-boot-starter-data-jpa in build.gradle"
+      ],
+      "version": "15",
+      "databases": ["dltmanager"],
+      "schema": "dlt_manager",
+      "flywayMigrations": true
+    },
+    "kafka": {
+      "detected": true,
+      "signals": [
+        "spring-cloud-stream-binder-kafka in build.gradle",
+        "spring.cloud.stream.kafka in application.yml"
+      ],
+      "version": "4.2",
+      "topicsDetected": ["elpa-dlt"],
+      "consumerGroups": ["dlt-manager-consumer"]
+    },
+    "redis": { "detected": false },
+    "mongodb": { "detected": false }
+  },
+  "envVarsNeeded": [
+    "POSTGRES_HOST",
+    "POSTGRES_PORT",
+    "POSTGRES_DB_NAME",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_SCHEMA_NAME",
+    "KAFKA_BROKER",
+    "KAFKA_CONSUMER_GROUP",
+    "AUTH_URL",
+    "AUTH_USERS",
+    "SWAGGER_ENABLED"
+  ],
+  "internalDependencies": [
+    "de.signaliduna.elpa:jwt-adapter:2.5.0",
+    "de.signaliduna.elpa:elpa4-model:1.1.1"
+  ],
+  "existingDockerfile": true,
+  "existingHelmChart": false,
+  "opentelemetry": true,
+  "actuatorEnabled": true,
+  "oauth2": {
+    "type": "resource-server",
+    "issuerUrl": "https://employee.login.int.signal-iduna.org/"
+  }
+}

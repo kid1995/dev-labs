@@ -1,0 +1,19 @@
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: lab-gateway
+  namespace: apps-dev
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "hint.lab.local"
+        - "dlt.lab.local"
+        - "dlt-ui.lab.local"
+        - "keycloak.lab.local"

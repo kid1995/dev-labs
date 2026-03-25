@@ -1,0 +1,36 @@
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: hint-backend-dr
+  namespace: apps-dev
+spec:
+  host: hint-backend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: dlt-backend-dr
+  namespace: apps-dev
+spec:
+  host: dlt-backend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: dlt-frontend-dr
+  namespace: apps-dev
+spec:
+  host: dlt-frontend
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 50

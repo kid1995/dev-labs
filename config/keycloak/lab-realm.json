@@ -1,0 +1,111 @@
+{
+  "realm": "lab",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 3600,
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Regular user role"
+      },
+      {
+        "name": "admin",
+        "description": "Admin role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@lab.local",
+      "firstName": "Lab",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "user"],
+      "attributes": {
+        "sub": ["S000325"],
+        "groups": ["admin"]
+      }
+    },
+    {
+      "username": "testuser",
+      "enabled": true,
+      "email": "test@lab.local",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"],
+      "attributes": {
+        "sub": ["U116330"],
+        "groups": ["user"]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "8d12476c2684592b12515daab4ca0ddb72007118-E",
+      "name": "DLT Manager Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "http://dlt-ui.lab.local/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "http://dlt-ui.lab.local"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "si_common"
+      ],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "lab-backend",
+      "name": "Lab Backend Services",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "lab-secret",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "si_common",
+      "description": "Signal Iduna common scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    }
+  ]
+}

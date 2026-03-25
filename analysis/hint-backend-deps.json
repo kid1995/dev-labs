@@ -1,0 +1,75 @@
+{
+  "project": "hint-backend",
+  "path": "projects/hint-backend",
+  "language": "java",
+  "framework": "spring-boot",
+  "springBootVersion": "4.0.3",
+  "javaVersion": "21",
+  "buildTool": "gradle",
+  "gradleVersion": "8.14.2",
+  "buildCommand": "./gradlew build -x check",
+  "artifactPattern": "hint-service/build/install/hint-service/",
+  "dockerBaseImage": "eclipse-temurin:21-jre-alpine",
+  "ports": {
+    "http": 8080,
+    "management": 8081
+  },
+  "healthEndpoint": "/health",
+  "livenessEndpoint": "/health/liveness",
+  "readinessEndpoint": "/health/readiness",
+  "managementPort": 8081,
+  "contextPath": "/api",
+  "envFile": "hint-service/src/main/resources/application.yml",
+  "activeProfiles": ["KoP"],
+  "modules": ["hint-model", "hint-client", "hint-service"],
+  "dependencies": {
+    "postgres": {
+      "detected": true,
+      "signals": [
+        "spring.datasource.url=jdbc:postgresql in application.yml",
+        "spring-boot-starter-data-jpa in build.gradle"
+      ],
+      "version": "18",
+      "databases": ["postgresql"],
+      "schema": "hint",
+      "flywayMigrations": true
+    },
+    "kafka": {
+      "detected": true,
+      "signals": [
+        "spring-cloud-stream-binder-kafka in build.gradle",
+        "spring.cloud.stream.kafka in application.yml"
+      ],
+      "version": "4.2",
+      "topicsDetected": ["elpa-hint-created"],
+      "consumerGroups": ["kafka-elpa-hint"]
+    },
+    "redis": { "detected": false },
+    "mongodb": { "detected": false }
+  },
+  "envVarsNeeded": [
+    "POSTGRES_HOST",
+    "POSTGRES_PORT",
+    "POSTGRES_DB_NAME",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_SCHEMA_NAME",
+    "KAFKA_BROKERS",
+    "KAFKA_CONSUMER_GROUP",
+    "AUTH_URL",
+    "AUTH_USERS",
+    "SWAGGER_ENABLED"
+  ],
+  "internalDependencies": [
+    "de.signaliduna.elpa:jwt-adapter:2.5.1-SNAPSHOT",
+    "de.signaliduna.elpa:spring-addons-oidc"
+  ],
+  "existingDockerfile": true,
+  "existingHelmChart": true,
+  "opentelemetry": true,
+  "actuatorEnabled": true,
+  "oauth2": {
+    "type": "resource-server",
+    "issuerUrl": "https://employee.login.int.signal-iduna.org/"
+  }
+}

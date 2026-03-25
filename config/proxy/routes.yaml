@@ -1,0 +1,40 @@
+# DNS routes for dev-labs reverse proxy
+# Edit this file, then run: ./scripts/setup-dns.sh --regenerate
+#
+# hostname: the *.labs.local domain name
+# target: container_name:port inside Docker network
+# description: shown in setup output
+
+routes:
+  - hostname: docs.labs.local
+    target: lab-guide:80
+    description: Lab Guide
+
+  - hostname: design-system.si.local
+    target: lab-storybook:80
+    description: SI UI Story Book
+
+  - hostname: git.labs.local
+    target: lab-gitea:3000
+    description: Gitea
+    client_max_body_size: 100m
+
+  - hostname: jenkins.labs.local
+    target: lab-jenkins:8080
+    description: Jenkins
+
+  - hostname: keycloak.labs.local
+    target: lab-keycloak:8080
+    description: Keycloak
+
+  - hostname: hint.elpa.local
+    target: lab-hint-backend:8080
+    description: Hint API
+
+  - hostname: dlt-api.elpa.local
+    target: lab-dlt-backend:8080
+    description: DLT Manager API
+
+  - hostname: dlt-fe.elpa.local
+    target: lab-dlt-frontend:80
+    description: DLT Frontend

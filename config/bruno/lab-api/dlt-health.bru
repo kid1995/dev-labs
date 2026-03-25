@@ -1,0 +1,15 @@
+meta {
+  name: DLT Health Check
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{dlt_url}}/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

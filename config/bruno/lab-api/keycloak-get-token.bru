@@ -1,0 +1,25 @@
+meta {
+  name: Get Access Token
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{keycloak_url}}/realms/{{realm}}/protocol/openid-connect/token
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: 8d12476c2684592b12515daab4ca0ddb72007118-E
+  username: admin
+  password: admin
+  scope: openid
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setVar("access_token", res.body.access_token);
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get All Hints
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{hint_url}}/api/hints
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

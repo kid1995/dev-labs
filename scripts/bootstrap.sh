@@ -3,27 +3,48 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-export JAVA_HOME="/Users/thekietdang/Library/Java/JavaVirtualMachines/temurin-21.0.8/Contents/Home"
+
+# Auto-detect JAVA_HOME if not set
+if [ -z "${JAVA_HOME:-}" ]; then
+    if command -v java >/dev/null 2>&1; then
+        export JAVA_HOME=$(java -XshowSettings:properties -version 2>&1 | grep 'java.home' | awk '{print $NF}')
+    fi
+fi
+
+# Java library paths — override via env vars for other machines
+JAVA_LIBS_DIR="${JAVA_LIBS_DIR:-${ROOT_DIR}/../java_libs}"
 
 echo "============================================"
 echo "  Local DevOps Lab — Full Bootstrap"
 echo "============================================"
 echo ""
+echo "  JAVA_HOME:     ${JAVA_HOME:-not set}"
+echo "  JAVA_LIBS_DIR: ${JAVA_LIBS_DIR}"
+echo "  ROOT_DIR:      ${ROOT_DIR}"
+echo ""
 
 # ---- Step 1: Build internal libraries ----
 echo "=== Step 1: Building internal Java libraries ==="
 
-echo "  Building jwt-adapter (2.5.0 + 2.5.1-SNAPSHOT)..."
-cd /Users/thekietdang/Downloads/github-buffer/java_libs/jwt-adapter
-./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze -Pversion=2.5.0 --no-daemon -q
-./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze --no-daemon -q
-echo "  jwt-adapter installed to mavenLocal"
+if [ -d "${JAVA_LIBS_DIR}/jwt-adapter" ]; then
+    echo "  Building jwt-adapter (2.5.0 + 2.5.1-SNAPSHOT)..."
+    cd "${JAVA_LIBS_DIR}/jwt-adapter"
+    ./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze -Pversion=2.5.0 --no-daemon -q
+    ./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze --no-daemon -q
+    echo "  jwt-adapter installed to mavenLocal"
+else
+    echo "  Skipping jwt-adapter (not found at ${JAVA_LIBS_DIR}/jwt-adapter)"
+fi
 
-echo "  Building elpa4-model (1.1.1 + 1.1.1-SNAPSHOT)..."
-cd /Users/thekietdang/Downloads/github-buffer/java_libs/elpa4-shared-lib/elpa4-model
-./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze -Pversion=1.1.1 --no-daemon -q
-./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze --no-daemon -q
-echo "  elpa4-model installed to mavenLocal"
+if [ -d "${JAVA_LIBS_DIR}/elpa4-shared-lib/elpa4-model" ]; then
+    echo "  Building elpa4-model (1.1.1 + 1.1.1-SNAPSHOT)..."
+    cd "${JAVA_LIBS_DIR}/elpa4-shared-lib/elpa4-model"
+    ./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze -Pversion=1.1.1 --no-daemon -q
+    ./gradlew publishToMavenLocal -x check -x test -x dependencyCheckAnalyze --no-daemon -q
+    echo "  elpa4-model installed to mavenLocal"
+else
+    echo "  Skipping elpa4-model (not found at ${JAVA_LIBS_DIR}/elpa4-shared-lib/elpa4-model)"
+fi
 
 # ---- Step 2: Build hint backend ----
 echo ""

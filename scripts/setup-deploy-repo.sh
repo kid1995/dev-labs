@@ -21,7 +21,8 @@ GITEA_USER="labadmin"
 GITEA_PASS="labadmin"
 
 # Source: combine-hint/elpa-elpa4 (the real deploy repo content)
-SOURCE_DIR="/Users/thekietdang/Downloads/github-buffer/combine-hint/elpa-elpa4"
+# Override with: DEPLOY_REPO_SOURCE=/path/to/elpa-elpa4 ./scripts/setup-deploy-repo.sh
+SOURCE_DIR="${DEPLOY_REPO_SOURCE:-${PROJECT_DIR}/../combine-hint/elpa-elpa4}"
 REPO_NAME="elpa-elpa4"
 
 # CoPSI uses CopsiEnvironment.nop as the target branch

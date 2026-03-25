@@ -1,5 +1,7 @@
 # Local DevOps Lab - Infrastructure Services
-# Usage: cd dev-labs && docker compose up -d
+# Usage:
+#   docker compose up -d                    # core services only
+#   docker compose --profile si-ui up -d    # + Storybook + Lab Guide
 
 services:
   # ==================== Tooling ====================
@@ -51,10 +53,13 @@ services:
       retries: 10
       start_period: 60s
 
-  # Lab Guide — documentation site for this DevOps lab
+  # ==================== Optional: SI UI (profile: si-ui) ====================
+
+  # Lab Guide — documentation site (needs docs/lab-guide/ directory)
   lab-guide:
     image: nginx:1-alpine
     container_name: lab-guide
+    profiles: ["si-ui"]
     ports:
       - "4202:80"
     volumes:
@@ -65,12 +70,11 @@ services:
       timeout: 5s
       retries: 3
 
-  # [LAB] Signal Iduna Design System Storybook
-  #   Built from libs/storybook-host in the design-system workspace
-  #   Source: http://localhost:3000/lab/design-system
+  # Signal Iduna Design System Storybook (needs src/design-system/ directory)
   storybook:
     image: nginx:1-alpine
     container_name: lab-storybook
+    profiles: ["si-ui"]
     ports:
       - "4201:80"
     volumes:

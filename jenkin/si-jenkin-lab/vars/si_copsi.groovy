@@ -42,7 +42,7 @@ void writeSealedSecretFile(Map config) {
 boolean createChange(BitbucketRepo repo, String targetBranch, Closure<String> updater) {
     sh "mkdir -p ${GIT_CLONE_DIR}"
     dir(GIT_CLONE_DIR) {
-        def gitUrl = "${GITEA_INTERNAL_URL}/${repo.projectName}/${repo.repoName}.git"
+        def gitUrl = "http://labadmin:labadmin@gitea:3000/${repo.projectName}/${repo.repoName}.git"
         sh "rm -rf ${repo.repoName}"
         sh "git clone ${gitUrl} --depth 1 -b '${targetBranch}'"
         dir(repo.repoName) {
@@ -82,7 +82,7 @@ String createChangeAsPullRequest(
     sh "mkdir -p ${GIT_CLONE_DIR}"
     String prId = ""
     dir(GIT_CLONE_DIR) {
-        def gitUrl = "${GITEA_INTERNAL_URL}/${repo.projectName}/${repo.repoName}.git"
+        def gitUrl = "http://labadmin:labadmin@gitea:3000/${repo.projectName}/${repo.repoName}.git"
         sh "rm -rf ${repo.repoName}"
 
         // Sanitize branch name for git
@@ -164,8 +164,6 @@ boolean waitForMergeChecksAndMerge(
     boolean deleteSourceBranch = true,
     int maxAttempts = 30
 ) {
-    sleep(time: 2, unit: "SECONDS")
-
     def apiUrl = "${GITEA_API_BASE}/repos/${repo.projectName}/${repo.repoName}/pulls/${prNumber}/merge"
     echo "[LAB] Merging PR #${prNumber} via Gitea API"
 
@@ -174,25 +172,38 @@ boolean waitForMergeChecksAndMerge(
         delete_branch_after_merge: deleteSourceBranch
     ])
 
-    def response = sh(
-        script: """curl -s -X POST '${apiUrl}' \
-            -H 'Content-Type: application/json' \
-            -H 'Accept: application/json' \
-            -u 'labadmin:labadmin' \
-            -d '${mergeBody}'""",
-        returnStdout: true
-    ).trim()
+    // Retry merge — Gitea sometimes needs a moment after push
+    int attempts = 0
+    while (attempts < 5) {
+        sleep(time: 3, unit: "SECONDS")
 
-    if (response == "" || response.contains('"sha"')) {
-        echo "[LAB] PR #${prNumber} merged successfully"
-        return true
-    } else {
-        echo "[LAB] PR merge response: ${response}"
-        if (abortBuildOnError) {
-            error("Failed to merge PR #${prNumber}")
+        def response = sh(
+            script: """curl -s -w '\\n%{http_code}' -X POST '${apiUrl}' \
+                -H 'Content-Type: application/json' \
+                -H 'Accept: application/json' \
+                -u 'labadmin:labadmin' \
+                -d '${mergeBody}'""",
+            returnStdout: true
+        ).trim()
+
+        def lines = response.split('\n')
+        def httpCode = lines[-1]
+        def body = lines.length > 1 ? lines[0..-2].join('\n') : ""
+
+        if (httpCode == "200" || httpCode == "204" || body == "" || body.contains('"sha"')) {
+            echo "[LAB] PR #${prNumber} merged successfully (HTTP ${httpCode})"
+            return true
         }
-        return false
+
+        echo "[LAB] Merge attempt ${attempts + 1}: HTTP ${httpCode} - ${body}"
+        attempts++
     }
+
+    echo "[LAB] Failed to merge PR #${prNumber} after ${attempts} attempts"
+    if (abortBuildOnError) {
+        error("Failed to merge PR #${prNumber}")
+    }
+    return false
 }
 
 /**

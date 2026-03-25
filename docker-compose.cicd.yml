@@ -1,5 +1,8 @@
-# CI/CD Tooling Stack — Gitea, Jenkins, Lab Guide, Storybook
-# Usage: docker compose -f docker-compose.cicd.yml up -d
+# CI/CD Tooling Stack — Gitea, Jenkins, Registry
+# Usage:
+#   docker compose -f docker-compose.cicd.yml up -d                    # core CI/CD only
+#   docker compose -f docker-compose.cicd.yml --profile si-ui up -d    # + Storybook + Lab Guide
+#
 # Network: shares "lab-net" with docker-compose.apps.yml
 
 services:
@@ -31,8 +34,6 @@ services:
   # [LAB SIMULATION] CI/CD:
   #   Original: Jenkins with si-dp-shared-libs + elpa-shared-lib, connected to Bitbucket DC
   #   Lab:      Jenkins LTS with setup wizard disabled, Docker socket mounted for image builds
-  #   Note:     docker.io CLI installed manually inside container (apt-get install docker.io)
-  #             mavenLocal deps (jwt-adapter, elpa4-model) copied to /root/.m2/ inside container
   jenkins:
     image: jenkins/jenkins:lts-jdk21
     container_name: lab-jenkins
@@ -46,8 +47,6 @@ services:
       - jenkins-data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       # [LAB] Jenkins shared libraries mounted as local filesystem libs
-      # si-jenkin-lab = lab-adapted si-dp-shared-libs (si_git, si_copsi, si_docker, etc.)
-      # elpa-jenkin-lab = lab-adapted elpa-shared-lib (elpa_copsi, elpa_psql)
       - ./jenkin/si-jenkin-lab:/var/jenkins_home/shared-libs/si-jenkin-lab:ro
       - ./jenkin/elpa-jenkin-lab:/var/jenkins_home/shared-libs/elpa-jenkin-lab:ro
       # Jenkins init script to register shared libraries on startup
@@ -61,10 +60,35 @@ services:
       retries: 10
       start_period: 60s
 
-  # Lab Guide — documentation site for this DevOps lab
+  # [LAB SIMULATION] Docker registry:
+  #   Original: dev.docker.system.local + prod.docker.system.local (Nexus-hosted)
+  #   Lab:      plain Docker Registry v2 (~10MB RAM)
+  #   Push:     docker tag myimg localhost:5050/myimg && docker push localhost:5050/myimg
+  #   From host: localhost:5050   From containers/k8s: registry:5000
+  registry:
+    image: registry:2
+    container_name: lab-registry
+    ports:
+      - "5050:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    networks:
+      - lab-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5000/v2/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==================== Optional: SI UI (profile: si-ui) ====================
+  # These require local assets from src/design-system and docs/lab-guide.
+  # Only available on machines with the full source checkout.
+
+  # Lab Guide — documentation site
   lab-guide:
     image: nginx:1-alpine
     container_name: lab-guide
+    profiles: ["si-ui"]
     ports:
       - "4202:80"
     volumes:
@@ -78,11 +102,10 @@ services:
       retries: 3
 
   # [LAB] Signal Iduna Design System Storybook
-  #   Built from libs/storybook-host in the design-system workspace
-  #   Source: http://localhost:3000/lab/design-system
   storybook:
     image: nginx:1-alpine
     container_name: lab-storybook
+    profiles: ["si-ui"]
     ports:
       - "4201:80"
     volumes:
@@ -98,6 +121,7 @@ services:
 volumes:
   gitea-data:
   jenkins-data:
+  registry-data:
 
 networks:
   lab-net:

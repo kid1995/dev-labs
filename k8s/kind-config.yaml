@@ -1,0 +1,20 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: dev-lab
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # ArgoCD UI
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+      # App access (optional, for future use)
+      - containerPort: 30081
+        hostPort: 30081
+        protocol: TCP
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"

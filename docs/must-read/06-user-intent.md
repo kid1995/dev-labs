@@ -65,6 +65,21 @@ The user wants other team members to use this lab. Key decisions:
 - No hardcoded paths in scripts (use env vars with defaults)
 - README has "Running on Another Machine" section
 
+## Workflow: lab first, real project second
+
+All changes to Jenkins shared libs or Jenkinsfiles MUST follow this order:
+1. Edit in `dev-labs/jenkin/elpa-jenkin-lab/` (or `si-jenkin-lab/`)
+2. Push to Gitea, trigger Jenkins job, verify it works
+3. Only then copy to `combine-hint/jenkin/elpa-jenkin/`
+4. Keep both versions in sync
+
+Never write untested code to combine-hint or sda-service repos. The lab exists to prevent this.
+
+Services that use these shared libs:
+- `combine-hint/hint/` — hint service (primary)
+- Future: dlt-manager, application-service, other sda-services
+- Each has its own `copsi/` Helm chart and Jenkinsfile
+
 ## What NOT to add
 
 - No git commit hooks — user explicitly removed them, prefers Jenkins-level validation

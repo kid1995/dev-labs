@@ -16,7 +16,7 @@ String JIRA_PROJECT_PREFIX = "ELPA4"
 String verifyJiraTicket() {
 	def branch = si_git.branchName()
 	// Only first line — commit messages can be multiline, ticket should be in the subject
-	def commitSubject = si_git.lastCommitMessage()?.split('\n')?.getAt(0) ?: ''
+	def commitSubject = (si_git.lastCommitMessage() ?: '').split('\n')[0]
 	def ticketPattern = /(?i)(${JIRA_PROJECT_PREFIX}-\d+)/
 
 	def branchMatch = (branch =~ ticketPattern)

@@ -117,7 +117,8 @@ boolean deployAbn(String serviceName, List<String> helmOverrides) {
 
 	Closure<String> autoDeployScript = {
 		// 1. Write ABN manifest
-		sh "mkdir -p ${new File(abnTarget).parent}"
+		// "./services/hint/abn.yaml" → "./services/hint"
+		sh "mkdir -p ${abnTarget.substring(0, abnTarget.lastIndexOf('/'))}"
 		writeFile file: abnTarget, text: manifest
 		sh "git add ${abnTarget}"
 
@@ -158,7 +159,8 @@ private void cleanupObsoleteFeatures(String serviceName, String featuresDir) {
 	def featureFiles = sh(script: "ls ${featuresDir}/*.yaml 2>/dev/null || true", returnStdout: true)
 		.trim()
 		.split("\\s+")
-		.collect { new File(it).name }
+		// "./services/hint/features/feat-elpa4-123.yaml" → "feat-elpa4-123.yaml"
+		.collect { it.substring(it.lastIndexOf('/') + 1) }
 		.findAll { it && it != "kustomization.yaml" }
 
 	if (!featureFiles) {
@@ -222,7 +224,8 @@ private boolean deployManifest(String serviceName, String jiraTicket, String env
 	def branchName = si_git.branchName()
 
 	Closure<String> autoDeployScript = {
-		sh "mkdir -p ${new File(target).parent}"
+		// "./services/hint/features/feat-elpa4-123.yaml" → "./services/hint/features"
+		sh "mkdir -p ${target.substring(0, target.lastIndexOf('/'))}"
 		writeFile file: target, text: manifest
 		sh "git add ${target}"
 		if (afterWrite) afterWrite()
@@ -236,21 +239,8 @@ private boolean deployManifest(String serviceName, String jiraTicket, String env
  * Rebuilds kustomization.yaml from all YAML files in a directory.
  */
 private void rebuildKustomization(String dir) {
-	def resources = sh(script: "ls ${dir}/*.yaml 2>/dev/null || true", returnStdout: true)
-		.trim()
-		.split("\\s+")
-		.collect { new File(it).name }
-		.findAll { it && it != "kustomization.yaml" }
-		.collect { "- ${it}" }
-		.join("\n")
-
-	writeFile file: "${dir}/kustomization.yaml", text: """\
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-${resources}
-"""
+	sh "rm -f ${dir}/kustomization.yaml"
+	sh "cd ${dir} && /tools/kustomize create --autodetect"
 }
 
 /**
@@ -297,26 +287,18 @@ private boolean handlePR(String serviceName, String jiraTicket, String branchNam
  * When running locally, same layout — values files need copsi/ prefix.
  */
 private String generateTemplate(List<String> args) {
+	def serviceGroup = env.COPSI_SERVICE_GROUP ?: "elpa"
 	def helmAvailable = sh(script: 'command -v helm > /dev/null 2>&1', returnStatus: true) == 0
-
-	// Both paths need copsi/ prefix since helm runs from workspace root
-	def adjustedArgs = args.collect { arg ->
-		arg.startsWith('--values ') ? arg.replace('--values ', '--values copsi/') : arg
-	}
-	def helmCommand = "helm template release-name ./copsi ${adjustedArgs.join(' ')}"
+	def helmCommand = "cd copsi && helm template ${args.join(' ')} ."
 
 	if (helmAvailable) {
-		def helmVersion = sh(script: 'helm version --short', returnStdout: true).trim()
-		echo "Using local helm: ${helmVersion}"
 		echo "Executing: ${helmCommand}"
 		return sh(script: helmCommand, returnStdout: true).trim()
 	} else {
 		def helmImage = env.HELM_IMAGE ?: 'registry:5000/toolimages-alpine-helm-kustomize:3'
-		echo "Local helm not found — using si_docker.withContainer(${helmImage})"
 		def result = ""
-		si_docker.withContainer(SERVICE_GROUP ?: "elpa", helmImage) { runCmd ->
-			def version = runCmd('helm version --short')
-			echo "Using Docker helm: ${version}"
+		si_docker.withContainer(serviceGroup, helmImage) { runCmd ->
+			echo "Executing: ${helmCommand}"
 			result = runCmd(helmCommand)
 		}
 		return result.trim()
